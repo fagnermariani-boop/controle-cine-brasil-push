@@ -147,7 +147,7 @@ const PUSH_CLIENT = String.raw`
   if (!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window)) return;
   const isResidentPage = location.pathname === "/";
   const isAdminPage = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
-  let installPrompt = null;
+  let installPrompt = window.__cineInstallPrompt || null;
 
   function removeCaretakerLinks() {
     if (!isResidentPage) return;
@@ -233,6 +233,12 @@ const PUSH_CLIENT = String.raw`
     else showResidentInstallButton();
   });
 
+  window.addEventListener("cineinstallready", () => {
+    installPrompt = window.__cineInstallPrompt || null;
+    if (isAdminPage) showAdminInstallButton();
+    else if (isResidentPage) showResidentInstallButton();
+  });
+
   window.addEventListener("appinstalled", () => {
     document.getElementById("cine-resident-install")?.remove();
     document.getElementById("cine-admin-install")?.remove();
@@ -288,6 +294,19 @@ const PUSH_CLIENT = String.raw`
 
 class PushScriptInjector {
   element(element) { element.append('<script src="/push-client.js" defer></script>', { html: true }); }
+}
+
+class InstallCaptureInjector {
+  element(element) {
+    element.prepend(`<script>
+      window.__cineInstallPrompt = null;
+      window.addEventListener("beforeinstallprompt", function(event) {
+        event.preventDefault();
+        window.__cineInstallPrompt = event;
+        window.dispatchEvent(new Event("cineinstallready"));
+      });
+    </script>`, { html: true });
+  }
 }
 
 class AdminManifestLink {
@@ -354,7 +373,9 @@ export default {
     if ((url.pathname === "/api/admin/requests" && request.method === "PATCH") || (url.pathname === "/api/admin/packages" && request.method === "POST")) return handleAdminMutation(request, env, ctx);
     const response = await proxy(request);
     if ((response.headers.get("content-type") || "").includes("text/html")) {
-      const rewriter = new HTMLRewriter().on("body", new PushScriptInjector());
+      const rewriter = new HTMLRewriter()
+        .on("head", new InstallCaptureInjector())
+        .on("body", new PushScriptInjector());
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) rewriter.on('link[rel="manifest"]', new AdminManifestLink());
       else if (url.pathname === "/") rewriter.on('link[rel="manifest"]', new ResidentManifestLink());
       return rewriter.transform(response);
