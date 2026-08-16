@@ -54,10 +54,24 @@ async function adminFromSession(request) {
 }
 
 async function subscribe(request, env) {
-  const resident = await residentFromSession(request) || await adminFromSession(request);
-  if (!resident) return json({ error: "Acesso autenticado necessário." }, 401);
+  const referer = request.headers.get("Referer") || "";
+  const fromAdmin = referer.includes("/admin");
+  const admin = fromAdmin ? await adminFromSession(request) : null;
+  const resident = admin ? null : await residentFromSession(request);
+  if (!resident && !admin) return json({ error: "Acesso autenticado necessário." }, 401);
   const subscription = await request.json().catch(() => null);
   if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) return json({ error: "Inscrição inválida." }, 400);
+  if (admin) {
+    await env.PUSH_DB.prepare(`CREATE TABLE IF NOT EXISTS admin_push_subscriptions (
+      endpoint TEXT PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`).run();
+    await env.PUSH_DB.prepare(`INSERT INTO admin_push_subscriptions (endpoint, p256dh, auth, updated_at)
+      VALUES (?, ?, ?, datetime('now')) ON CONFLICT(endpoint) DO UPDATE SET
+      p256dh=excluded.p256dh, auth=excluded.auth, updated_at=datetime('now')`)
+      .bind(subscription.endpoint, subscription.keys.p256dh, subscription.keys.auth).run();
+    return json({ ok: true, role: "admin" });
+  }
   await env.PUSH_DB.prepare(`INSERT INTO push_subscriptions
     (endpoint, block, apartment, resident_name, p256dh, auth, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
@@ -93,6 +107,28 @@ async function sendToApartment(env, block, apartment, payload) {
     }
   }));
   await Promise.all(dead.map((endpoint) => env.PUSH_DB.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").bind(endpoint).run()));
+}
+
+async function sendToAdmins(env, payload) {
+  await env.PUSH_DB.prepare(`CREATE TABLE IF NOT EXISTS admin_push_subscriptions (
+    endpoint TEXT PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`).run();
+  const { results } = await env.PUSH_DB.prepare("SELECT endpoint, p256dh, auth FROM admin_push_subscriptions").all();
+  const dead = [];
+  await Promise.all((results || []).map(async (row) => {
+    try {
+      await sendNotification(
+        { endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } },
+        JSON.stringify(payload),
+        { vapidDetails: { subject: env.VAPID_SUBJECT, publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY }, TTL: 86400, urgency: "high" },
+      );
+    } catch (error) {
+      if (error?.statusCode === 404 || error?.statusCode === 410) dead.push(row.endpoint);
+      else console.error("Falha ao enviar push ao zelador", error);
+    }
+  }));
+  await Promise.all(dead.map((endpoint) => env.PUSH_DB.prepare("DELETE FROM admin_push_subscriptions WHERE endpoint = ?").bind(endpoint).run()));
 }
 
 async function getAdminRequest(request, id) {
@@ -137,7 +173,7 @@ async function handleResidentRequest(request, env, ctx) {
   const response = await proxy(request);
   if (!response.ok || !resident) return response;
 
-  ctx.waitUntil(sendToApartment(env, "__ADMIN__", "__ADMIN__", {
+  ctx.waitUntil(sendToAdmins(env, {
     title: "Nova solicitação de morador",
     body: `Bloco ${resident.block || "A"} · Apto ${resident.apartment} · ${TIPOS[body.kind] || "Solicitação"}`,
     tag: `new-request-${resident.block || "A"}-${resident.apartment}-${Date.now()}`,
