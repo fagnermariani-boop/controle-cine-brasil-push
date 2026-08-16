@@ -363,6 +363,9 @@ const ADMIN_MANIFEST = {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === "/" && request.method === "GET" && request.headers.get("sec-fetch-mode") === "navigate") {
+      return Response.redirect(new URL(`/morador/${url.search}`, url), 302);
+    }
     if (url.pathname === "/api/push/vapid-key" && request.method === "GET") return json({ publicKey: env.VAPID_PUBLIC_KEY });
     if (url.pathname === "/api/push/subscribe" && request.method === "POST") return subscribe(request, env);
     if (url.pathname === "/api/push/unsubscribe" && request.method === "POST") return unsubscribe(request, env);
