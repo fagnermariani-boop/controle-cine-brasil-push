@@ -1,0 +1,9 @@
+{
+  "name": "controle-cine-brasil-cloudflare",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "deploy": "wrangler deploy", "check": "wrangler deploy --dry-run --outdir dist" },
+  "dependencies": { "web-push-neo": "^0.1.2" },
+  "devDependencies": { "web-push": "^3.6.7", "wrangler": "^4.0.0" }
+}
