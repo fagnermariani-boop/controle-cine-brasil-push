@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sistemasvercel",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-15",
+  "workers_dev": true,
+  "d1_databases": [{
+    "binding": "PUSH_DB",
+    "database_name": "cine-brasil-push",
+    "database_id": "COLE_AQUI_O_ID_DO_BANCO_D1"
+  }]
+}
