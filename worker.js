@@ -6,7 +6,10 @@ const json = (data, status = 200) => Response.json(data, { status, headers: { "c
 
 function upstreamUrl(request) {
   const incoming = new URL(request.url);
-  return new URL(incoming.pathname + incoming.search, SITE_ORIGINAL);
+  let pathname = incoming.pathname;
+  if (pathname === "/morador" || pathname === "/morador/") pathname = "/";
+  if (pathname === "/admin/") pathname = "/admin";
+  return new URL(pathname + incoming.search, SITE_ORIGINAL);
 }
 
 function upstreamHeaders(request, target) {
@@ -106,7 +109,7 @@ async function handleAdminMutation(request, env, ctx) {
       await sendToApartment(env, item.block || "A", item.apartment, {
         title: approved ? "Solicitação aprovada!" : "Solicitação não autorizada",
         body: `${TIPOS[item.kind] || "Solicitação"} · ${item.date || "Consulte os detalhes"}`,
-        tag: `request-${item.id}-${body.status}`, url: "/",
+        tag: `request-${item.id}-${body.status}`, url: "/morador/",
       });
     })());
   }
@@ -114,7 +117,7 @@ async function handleAdminMutation(request, env, ctx) {
     ctx.waitUntil(sendToApartment(env, body.block || "A", body.apartment, {
       title: "Encomenda recebida",
       body: `${body.type || "Encomenda"} registrada para o Apto ${body.apartment}.`,
-      tag: `package-${body.block || "A"}-${body.apartment}-${Date.now()}`, url: "/",
+      tag: `package-${body.block || "A"}-${body.apartment}-${Date.now()}`, url: "/morador/",
     }));
   }
   return response;
@@ -145,7 +148,7 @@ self.addEventListener("notificationclick", event => {
 const PUSH_CLIENT = String.raw`
 (() => {
   if (!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window)) return;
-  const isResidentPage = location.pathname === "/";
+  const isResidentPage = location.pathname === "/" || location.pathname === "/morador" || location.pathname === "/morador/";
   const isAdminPage = location.pathname === "/admin" || location.pathname.startsWith("/admin/");
   let installPrompt = window.__cineInstallPrompt || null;
 
@@ -318,13 +321,13 @@ class ResidentManifestLink {
 }
 
 const RESIDENT_MANIFEST = {
-  id: "/morador",
+  id: "/morador/",
   name: "Controle Cine Brasil - Morador",
   short_name: "Cine Morador",
   description: "Reservas, comunicações e encomendas do Condomínio Cine Brasil.",
   lang: "pt-BR",
-  start_url: "/?app=morador",
-  scope: "/",
+  start_url: "/morador/",
+  scope: "/morador/",
   display: "standalone",
   orientation: "portrait-primary",
   background_color: "#001b50",
@@ -338,13 +341,13 @@ const RESIDENT_MANIFEST = {
 };
 
 const ADMIN_MANIFEST = {
-  id: "/admin",
+  id: "/admin/",
   name: "Controle Cine Brasil - Zelador",
   short_name: "Cine Zelador",
   description: "Painel do zelador do Condomínio Cine Brasil.",
   lang: "pt-BR",
-  start_url: "/admin",
-  scope: "/",
+  start_url: "/admin/",
+  scope: "/admin/",
   display: "standalone",
   orientation: "portrait-primary",
   background_color: "#001b50",
@@ -377,7 +380,7 @@ export default {
         .on("head", new InstallCaptureInjector())
         .on("body", new PushScriptInjector());
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) rewriter.on('link[rel="manifest"]', new AdminManifestLink());
-      else if (url.pathname === "/") rewriter.on('link[rel="manifest"]', new ResidentManifestLink());
+      else if (url.pathname === "/" || url.pathname === "/morador" || url.pathname === "/morador/") rewriter.on('link[rel="manifest"]', new ResidentManifestLink());
       return rewriter.transform(response);
     }
     return response;
