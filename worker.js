@@ -224,6 +224,51 @@ const PUSH_CLIENT = String.raw`
     });
   }
 
+  function ensureResidentAccessFooter() {
+    if (!isResidentPage || document.getElementById("condoclub-resident-footer")) return;
+    const accessCard = document.querySelector("main.access-screen .access-card");
+    if (!accessCard) return;
+    const footer = document.createElement("footer");
+    footer.id = "condoclub-resident-footer";
+    footer.innerHTML = [
+      '<div style="display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:12px">',
+      '<span style="display:grid;place-items:center;width:38px;height:38px;border:3px solid #062b61;border-right-color:#e5a600;border-radius:50%;font:800 13px system-ui;color:#062b61">CC</span>',
+      '<div style="font:800 25px system-ui;letter-spacing:-1px"><span style="color:#062b61">Condo</span><span style="color:#e5a600">Club</span></div>',
+      '</div>',
+      '<p style="margin:0 0 9px">Este aplicativo é uma cortesia da Rede CondoClub, oferecido gratuitamente e sem custos para o condomínio.</p>',
+      '<p style="margin:0 0 13px">Conheça os benefícios para moradores em <a href="https://redecondoclub.vercel.app" target="_blank" rel="noopener noreferrer" style="color:#062b61;font-weight:800">redecondoclub.vercel.app</a>.</p>',
+      '<div style="border-top:1px solid #d9dee8;padding-top:12px;color:#667085;font-size:12px">CondoClub Benefícios é um produto da Vercel Tecnologia da Informação LTDA.</div>'
+    ].join("");
+    Object.assign(footer.style, {
+      marginTop:"22px", paddingTop:"20px", borderTop:"1px solid #d9dee8",
+      textAlign:"center", color:"#344054", font:"400 13px/1.5 system-ui"
+    });
+    accessCard.appendChild(footer);
+  }
+
+  function isReservationScreen() {
+    const text = document.body?.innerText || "";
+    return /reserva do salão|salão de festas/i.test(text) && !![...document.querySelectorAll("button")].find(button => /enviar solicitação/i.test(button.textContent || ""));
+  }
+
+  function ensureReservationAgreement() {
+    if (!isResidentPage || !isReservationScreen() || document.getElementById("reservation-rules-accept")) return;
+    const submit = [...document.querySelectorAll("button")].find(button => /enviar solicitação/i.test(button.textContent || ""));
+    if (!submit) return;
+    const box = document.createElement("label");
+    box.id = "reservation-rules-accept";
+    box.innerHTML = '<input type="checkbox" required style="width:21px;height:21px;flex:0 0 auto;margin-top:2px;accent-color:#001b50">' +
+      '<span><strong>Li e concordo com as regras de uso do salão:</strong> taxa de R$ 100,00 no boleto do mês seguinte; silêncio até 22h de segunda a quinta e até 0h às sextas, sábados, domingos e vésperas de feriado; responsabilidade pelos convidados e pela conservação do espaço.</span>';
+    Object.assign(box.style, {
+      display:"flex", gap:"10px", alignItems:"flex-start", padding:"14px",
+      margin:"12px 0", border:"1px solid #c9d3e3", borderRadius:"12px",
+      background:"#f7f9fc", color:"#24324a", font:"400 13px/1.45 system-ui",
+      cursor:"pointer"
+    });
+    const actions = submit.closest(".actions") || submit.parentElement;
+    actions.parentElement.insertBefore(box, actions);
+  }
+
   function isInstalled() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
@@ -348,7 +393,13 @@ const PUSH_CLIENT = String.raw`
   navigator.serviceWorker.register("/sw.js").then(() => activate(false));
   if (isResidentPage) {
     removeCaretakerLinks();
-    const observer = new MutationObserver(() => removeCaretakerLinks());
+    ensureResidentAccessFooter();
+    ensureReservationAgreement();
+    const observer = new MutationObserver(() => {
+      removeCaretakerLinks();
+      ensureResidentAccessFooter();
+      ensureReservationAgreement();
+    });
     observer.observe(document.documentElement, { childList:true, subtree:true });
     setTimeout(showResidentInstallButton, 1800);
     setTimeout(showResidentPackageSummary, 2600);
@@ -360,6 +411,17 @@ const PUSH_CLIENT = String.raw`
     setTimeout(showAdminInstallButton, 1800);
   }
   document.addEventListener("click", event => {
+    const reservationSubmit = event.target.closest("button");
+    if (isResidentPage && reservationSubmit && /enviar solicitação/i.test(reservationSubmit.textContent || "") && isReservationScreen()) {
+      const agreement = document.querySelector("#reservation-rules-accept input[type=checkbox]");
+      if (!agreement?.checked) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toast("Para finalizar a reserva, aceite as regras de uso do salão.");
+        agreement?.focus();
+        return;
+      }
+    }
     const button = event.target.closest('button[title="Ativar notificações"]');
     if (!button) return;
     setTimeout(async () => {
@@ -371,7 +433,7 @@ const PUSH_CLIENT = String.raw`
 })();`;
 
 class PushScriptInjector {
-  element(element) { element.append('<script src="/push-client.js?v=20260816-2" defer></script>', { html: true }); }
+  element(element) { element.append('<script src="/push-client.js?v=20260816-3" defer></script>', { html: true }); }
 }
 
 class InstallCaptureInjector {
