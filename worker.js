@@ -190,6 +190,30 @@ class AdminManifestLink {
   element(element) { element.setAttribute("href", "/admin-manifest.webmanifest"); }
 }
 
+class ResidentManifestLink {
+  element(element) { element.setAttribute("href", "/resident-manifest.webmanifest"); }
+}
+
+const RESIDENT_MANIFEST = {
+  id: "/morador",
+  name: "Controle Cine Brasil - Morador",
+  short_name: "Cine Morador",
+  description: "Reservas, comunicações e encomendas do Condomínio Cine Brasil.",
+  lang: "pt-BR",
+  start_url: "/?app=morador",
+  scope: "/",
+  display: "standalone",
+  orientation: "portrait-primary",
+  background_color: "#001b50",
+  theme_color: "#001b50",
+  categories: ["productivity", "lifestyle"],
+  icons: [
+    { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+  ],
+};
+
 const ADMIN_MANIFEST = {
   id: "/admin",
   name: "Controle Cine Brasil - Zelador",
@@ -216,6 +240,7 @@ export default {
     if (url.pathname === "/api/push/vapid-key" && request.method === "GET") return json({ publicKey: env.VAPID_PUBLIC_KEY });
     if (url.pathname === "/api/push/subscribe" && request.method === "POST") return subscribe(request, env);
     if (url.pathname === "/api/push/unsubscribe" && request.method === "POST") return unsubscribe(request, env);
+    if (url.pathname === "/resident-manifest.webmanifest") return new Response(JSON.stringify(RESIDENT_MANIFEST), { headers: { "content-type":"application/manifest+json; charset=utf-8", "cache-control":"public, max-age=3600" } });
     if (url.pathname === "/admin-manifest.webmanifest") return new Response(JSON.stringify(ADMIN_MANIFEST), { headers: { "content-type":"application/manifest+json; charset=utf-8", "cache-control":"public, max-age=3600" } });
     if (url.pathname === "/push-client.js") return new Response(PUSH_CLIENT, { headers: { "content-type":"text/javascript; charset=utf-8", "cache-control":"no-cache" } });
     if (url.pathname === "/sw.js") {
@@ -227,6 +252,7 @@ export default {
     if ((response.headers.get("content-type") || "").includes("text/html")) {
       const rewriter = new HTMLRewriter().on("body", new PushScriptInjector());
       if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) rewriter.on('link[rel="manifest"]', new AdminManifestLink());
+      else if (url.pathname === "/") rewriter.on('link[rel="manifest"]', new ResidentManifestLink());
       return rewriter.transform(response);
     }
     return response;
