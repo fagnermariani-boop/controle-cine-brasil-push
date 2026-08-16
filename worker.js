@@ -316,6 +316,20 @@ const PUSH_CLIENT = String.raw`
     Object.assign(item.style, { position:"fixed", top:"16px", left:"50%", transform:"translateX(-50%)", zIndex:"99999", background:"#001b50", color:"white", padding:"12px 18px", borderRadius:"10px", boxShadow:"0 6px 22px #0004", font:"600 14px system-ui", maxWidth:"calc(100vw - 32px)", textAlign:"center" });
     document.body.appendChild(item); setTimeout(() => item.remove(), 4000);
   };
+  async function showResidentPackageSummary() {
+    if (!isResidentPage) return;
+    try {
+      const response = await fetch("/api/resident/feed", { cache:"no-store" });
+      if (!response.ok) return;
+      const data = await response.json();
+      const waiting = (data.packages || []).filter(item => item.status === "received");
+      if (waiting.length) {
+        toast("📦 Você tem " + waiting.length + " encomenda" + (waiting.length > 1 ? "s" : "") + " aguardando retirada.");
+      }
+    } catch (error) {
+      console.error("Não foi possível consultar encomendas", error);
+    }
+  }
   async function activate(showSuccess = false) {
     if (Notification.permission !== "granted") return;
     try {
@@ -337,6 +351,7 @@ const PUSH_CLIENT = String.raw`
     const observer = new MutationObserver(() => removeCaretakerLinks());
     observer.observe(document.documentElement, { childList:true, subtree:true });
     setTimeout(showResidentInstallButton, 1800);
+    setTimeout(showResidentPackageSummary, 2600);
   }
   if (isAdminPage) {
     removeResidentReturnButton();
@@ -356,7 +371,7 @@ const PUSH_CLIENT = String.raw`
 })();`;
 
 class PushScriptInjector {
-  element(element) { element.append('<script src="/push-client.js" defer></script>', { html: true }); }
+  element(element) { element.append('<script src="/push-client.js?v=20260816-2" defer></script>', { html: true }); }
 }
 
 class InstallCaptureInjector {
