@@ -145,6 +145,59 @@ self.addEventListener("notificationclick", event => {
 const PUSH_CLIENT = String.raw`
 (() => {
   if (!("serviceWorker" in navigator && "PushManager" in window && "Notification" in window)) return;
+  const isResidentPage = location.pathname === "/";
+  let installPrompt = null;
+
+  function removeCaretakerLinks() {
+    if (!isResidentPage) return;
+    document.querySelectorAll('a[href="/admin"], a[href^="/admin?"]').forEach(link => link.remove());
+  }
+
+  function isInstalled() {
+    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  }
+
+  function hasNativeInstallButton() {
+    return [...document.querySelectorAll("button, a")].some(element =>
+      /baixar|instalar/i.test(element.textContent || "") && /aplicativo|app/i.test(element.textContent || "")
+    );
+  }
+
+  function showResidentInstallButton() {
+    if (!isResidentPage || isInstalled() || document.getElementById("cine-resident-install") || hasNativeInstallButton()) return;
+    const button = document.createElement("button");
+    button.id = "cine-resident-install";
+    button.type = "button";
+    button.innerHTML = "<span style='font-size:20px'>⬇</span><span>Baixar aplicativo<br><small style='font-weight:500'>Cine Morador</small></span>";
+    button.setAttribute("aria-label", "Baixar aplicativo Cine Morador");
+    Object.assign(button.style, {
+      position: "fixed", right: "16px", bottom: "82px", zIndex: "99998",
+      display: "flex", alignItems: "center", gap: "9px", border: "0",
+      borderRadius: "14px", padding: "11px 15px", background: "#001b50",
+      color: "white", boxShadow: "0 7px 24px #0005", font: "700 14px system-ui",
+      lineHeight: "1.15", textAlign: "left", cursor: "pointer"
+    });
+    button.addEventListener("click", async () => {
+      if (installPrompt) {
+        installPrompt.prompt();
+        await installPrompt.userChoice;
+        installPrompt = null;
+        button.remove();
+      } else {
+        toast("No menu do navegador, toque em Instalar aplicativo ou Adicionar à tela inicial.");
+      }
+    });
+    document.body.appendChild(button);
+  }
+
+  window.addEventListener("beforeinstallprompt", event => {
+    if (!isResidentPage) return;
+    event.preventDefault();
+    installPrompt = event;
+    showResidentInstallButton();
+  });
+
+  window.addEventListener("appinstalled", () => document.getElementById("cine-resident-install")?.remove());
   const keyBytes = value => {
     const padded = value + "=".repeat((4 - value.length % 4) % 4);
     const binary = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
@@ -171,6 +224,12 @@ const PUSH_CLIENT = String.raw`
     }
   }
   navigator.serviceWorker.register("/sw.js").then(() => activate(false));
+  if (isResidentPage) {
+    removeCaretakerLinks();
+    const observer = new MutationObserver(() => removeCaretakerLinks());
+    observer.observe(document.documentElement, { childList:true, subtree:true });
+    setTimeout(showResidentInstallButton, 1800);
+  }
   document.addEventListener("click", event => {
     const button = event.target.closest('button[title="Ativar notificações"]');
     if (!button) return;
