@@ -258,7 +258,11 @@ const PUSH_CLIENT = String.raw`
     const box = document.createElement("label");
     box.id = "reservation-rules-accept";
     box.innerHTML = '<input type="checkbox" required style="width:21px;height:21px;flex:0 0 auto;margin-top:2px;accent-color:#001b50">' +
-      '<span><strong>Li e concordo com as regras de uso do salão.</strong> A taxa de utilização é de R$ 100,00 e será cobrada no boleto do condomínio do mês seguinte. Não farei barulho após as 22h, de segunda a quinta, nem após as 0h às sextas, aos sábados, domingos e vésperas de feriado. Sou responsável pelos meus convidados e pela conservação do espaço.</span>';
+      '<span style="display:block"><strong style="display:block;margin-bottom:7px">Li e concordo com as regras de uso do salão:</strong>' +
+      '<span style="display:block;margin-bottom:5px">° A taxa de utilização é de R$ 100,00 e será cobrada no boleto do condomínio do mês seguinte.</span>' +
+      '<span style="display:block;margin-bottom:5px">° Não farei barulho após as 22h, de segunda a quinta.</span>' +
+      '<span style="display:block;margin-bottom:5px">° Não farei barulho após as 0h às sextas, aos sábados, domingos e vésperas de feriado.</span>' +
+      '<span style="display:block">° Sou responsável pelos meus convidados e pela conservação do espaço.</span></span>';
     Object.assign(box.style, {
       display:"flex", gap:"10px", alignItems:"flex-start", padding:"14px",
       margin:"12px 0", border:"1px solid #c9d3e3", borderRadius:"12px",
@@ -433,7 +437,7 @@ const PUSH_CLIENT = String.raw`
 })();`;
 
 class PushScriptInjector {
-  element(element) { element.append('<script src="/push-client.js?v=20260816-4" defer></script>', { html: true }); }
+  element(element) { element.append('<script src="/push-client.js?v=20260816-5" defer></script>', { html: true }); }
 }
 
 class InstallCaptureInjector {
