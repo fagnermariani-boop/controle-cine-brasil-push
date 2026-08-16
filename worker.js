@@ -45,9 +45,17 @@ async function residentFromSession(request) {
   return (await response.json()).resident || null;
 }
 
+async function adminFromSession(request) {
+  const target = new URL("/api/admin/session", SITE_ORIGINAL);
+  const response = await fetch(target, { headers: upstreamHeaders(request, target), cache: "no-store" });
+  if (!response.ok) return null;
+  const data = await response.json();
+  return data.authenticated ? { block: "__ADMIN__", apartment: "__ADMIN__", name: "Zelador" } : null;
+}
+
 async function subscribe(request, env) {
-  const resident = await residentFromSession(request);
-  if (!resident) return json({ error: "Acesso do morador necessário." }, 401);
+  const resident = await residentFromSession(request) || await adminFromSession(request);
+  if (!resident) return json({ error: "Acesso autenticado necessário." }, 401);
   const subscription = await request.json().catch(() => null);
   if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) return json({ error: "Inscrição inválida." }, 400);
   await env.PUSH_DB.prepare(`INSERT INTO push_subscriptions
@@ -120,6 +128,22 @@ async function handleAdminMutation(request, env, ctx) {
       tag: `package-${body.block || "A"}-${body.apartment}-${Date.now()}`, url: "/morador/",
     }));
   }
+  return response;
+}
+
+async function handleResidentRequest(request, env, ctx) {
+  const body = await request.clone().json().catch(() => ({}));
+  const resident = await residentFromSession(request);
+  const response = await proxy(request);
+  if (!response.ok || !resident) return response;
+
+  ctx.waitUntil(sendToApartment(env, "__ADMIN__", "__ADMIN__", {
+    title: "Nova solicitação de morador",
+    body: `Bloco ${resident.block || "A"} · Apto ${resident.apartment} · ${TIPOS[body.kind] || "Solicitação"}`,
+    tag: `new-request-${resident.block || "A"}-${resident.apartment}-${Date.now()}`,
+    url: "/admin/",
+  }));
+
   return response;
 }
 
@@ -377,6 +401,7 @@ export default {
       return new Response(`${await original.text()}\n${PUSH_SERVICE_WORKER}`, { headers: { "content-type":"text/javascript; charset=utf-8", "cache-control":"no-cache" } });
     }
     if ((url.pathname === "/api/admin/requests" && request.method === "PATCH") || (url.pathname === "/api/admin/packages" && request.method === "POST")) return handleAdminMutation(request, env, ctx);
+    if (url.pathname === "/api/resident/requests" && request.method === "POST") return handleResidentRequest(request, env, ctx);
     const response = await proxy(request);
     if ((response.headers.get("content-type") || "").includes("text/html")) {
       const rewriter = new HTMLRewriter()
