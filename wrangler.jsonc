@@ -7,6 +7,6 @@
   "d1_databases": [{
     "binding": "PUSH_DB",
     "database_name": "cine-brasil-push",
-    "database_id": "COLE_AQUI_O_ID_DO_BANCO_D1"
+    "database_id": "39adee02-f441-410e-a5ff-7fa304f96b1c"
   }]
 }
