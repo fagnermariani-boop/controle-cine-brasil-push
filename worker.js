@@ -186,12 +186,37 @@ class PushScriptInjector {
   element(element) { element.append('<script src="/push-client.js" defer></script>', { html: true }); }
 }
 
+class AdminManifestLink {
+  element(element) { element.setAttribute("href", "/admin-manifest.webmanifest"); }
+}
+
+const ADMIN_MANIFEST = {
+  id: "/admin",
+  name: "Controle Cine Brasil - Zelador",
+  short_name: "Cine Zelador",
+  description: "Painel do zelador do Condomínio Cine Brasil.",
+  lang: "pt-BR",
+  start_url: "/admin",
+  scope: "/",
+  display: "standalone",
+  orientation: "portrait-primary",
+  background_color: "#001b50",
+  theme_color: "#001b50",
+  categories: ["productivity"],
+  icons: [
+    { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+  ],
+};
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (url.pathname === "/api/push/vapid-key" && request.method === "GET") return json({ publicKey: env.VAPID_PUBLIC_KEY });
     if (url.pathname === "/api/push/subscribe" && request.method === "POST") return subscribe(request, env);
     if (url.pathname === "/api/push/unsubscribe" && request.method === "POST") return unsubscribe(request, env);
+    if (url.pathname === "/admin-manifest.webmanifest") return new Response(JSON.stringify(ADMIN_MANIFEST), { headers: { "content-type":"application/manifest+json; charset=utf-8", "cache-control":"public, max-age=3600" } });
     if (url.pathname === "/push-client.js") return new Response(PUSH_CLIENT, { headers: { "content-type":"text/javascript; charset=utf-8", "cache-control":"no-cache" } });
     if (url.pathname === "/sw.js") {
       const original = await proxy(request);
@@ -199,7 +224,11 @@ export default {
     }
     if ((url.pathname === "/api/admin/requests" && request.method === "PATCH") || (url.pathname === "/api/admin/packages" && request.method === "POST")) return handleAdminMutation(request, env, ctx);
     const response = await proxy(request);
-    if ((response.headers.get("content-type") || "").includes("text/html")) return new HTMLRewriter().on("body", new PushScriptInjector()).transform(response);
+    if ((response.headers.get("content-type") || "").includes("text/html")) {
+      const rewriter = new HTMLRewriter().on("body", new PushScriptInjector());
+      if (url.pathname === "/admin" || url.pathname.startsWith("/admin/")) rewriter.on('link[rel="manifest"]', new AdminManifestLink());
+      return rewriter.transform(response);
+    }
     return response;
   },
 };
