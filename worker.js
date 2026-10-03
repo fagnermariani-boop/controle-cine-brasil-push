@@ -656,27 +656,27 @@ const RESIDENT_MENU_CLIENT = String.raw`
     const icons = [
       {
         match: /reserva|salão/i,
-        svg: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2"/>'
+        svg: '<rect x="3" y="5" width="18" height="16" rx="3" fill="#fff5de"/><path d="M3 11h18M8 3v4M16 3v4"/><path d="M8 15h2M14 15h2M8 18h2" stroke="#b88a36"/>'
       },
       {
         match: /mudança|transporte/i,
-        svg: '<path d="M3 4h3l3 13h10M6.7 7H21l-2 7H8.3"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/>'
+        svg: '<rect x="2" y="5" width="12" height="12" rx="2" fill="#b88a36"/><path d="M14 9h4l4 5v3h-8Z" fill="#edf2fa"/><path d="M16 10v4h5"/><circle cx="6" cy="18" r="2" fill="#001b50"/><circle cx="18" cy="18" r="2" fill="#001b50"/>'
       },
       {
         match: /barulho|comunicação/i,
-        svg: '<path d="M4 10v4h4l10 5V5L8 10H4ZM8 14l2 6h3l-2-4.5M21 9v6"/>'
+        svg: '<path d="M4 10v4h4l10 5V5L8 10Z" fill="#b88a36"/><path d="M8 14l2 6h3l-2-4.5" fill="#edf2fa"/><path d="M21 9v6" stroke="#b88a36"/>'
       },
       {
         match: /encomenda|correspondência/i,
-        svg: '<path d="m12 3 9 5v8l-9 5-9-5V8l9-5ZM3 8l9 5 9-5M12 13v8M7.5 5.5l9 5V14"/>'
+        svg: '<path d="m12 3 9 5v8l-9 5-9-5V8Z" fill="#fff5de"/><path d="m3 8 9 5 9-5M12 13v8"/><path d="m7.5 5.5 9 5V14" stroke="#b88a36" stroke-width="2.5"/>'
       },
       {
         match: /token|emergência/i,
-        svg: '<circle cx="8" cy="8" r="5"/><path d="m11.5 11.5 9 9M16 16l3-3M18.5 18.5l3-3M6.5 6.5h.01"/>'
+        svg: '<circle cx="8" cy="8" r="5" fill="#b88a36"/><path d="m11.5 11.5 9 9M16 16l3-3M18.5 18.5l3-3"/><circle cx="6.5" cy="6.5" r="1" fill="#001b50" stroke="none"/>'
       },
       {
         match: /vídeo|porteiro/i,
-        svg: '<rect x="3" y="5" width="18" height="13" rx="3"/><circle cx="12" cy="11.5" r="3"/><path d="M9 21h6M12 18v3"/>'
+        svg: '<rect x="3" y="5" width="18" height="13" rx="3" fill="#edf2fa"/><circle cx="12" cy="11.5" r="3.5" fill="#b88a36"/><circle cx="12" cy="11.5" r="1" fill="#001b50" stroke="none"/><path d="M9 21h6M12 18v3"/>'
       }
     ];
 
@@ -684,6 +684,7 @@ const RESIDENT_MENU_CLIENT = String.raw`
       const style = document.createElement("style");
       style.id = "cine-modern-icons-style";
       style.textContent = [
+        ".home-page .menu-grid>button{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:9px!important;text-align:center!important}.home-page .menu-grid>button .menu-icon{position:static!important;float:none!important;margin:0!important;order:0!important;background:#fff5de!important;color:#001b50!important}.home-page .menu-grid>button strong{display:block!important;width:100%!important;margin:0!important;order:1!important;text-align:center!important}.home-page .menu-grid>button .menu-icon svg{width:32px;height:32px}",
         ".home-page .menu-grid>button .menu-icon{display:inline-flex!important;align-items:center;justify-content:center;width:46px!important;height:46px!important;flex:0 0 46px;border-radius:14px;background:#edf2fa;color:#001b50;font-size:0!important;line-height:1}",
         ".home-page .menu-grid>button .menu-icon svg{display:block;width:27px;height:27px;flex-shrink:0}",
         ".home-page .menu-grid>button:active .menu-icon{background:#dce6f5}"
