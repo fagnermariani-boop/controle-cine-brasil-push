@@ -434,8 +434,62 @@ const PUSH_CLIENT = String.raw`
   }, true);
 })();`;
 
+
+const RESIDENT_MENU_CLIENT = String.raw`
+(() => {
+  if (!["/", "/morador", "/morador/"].includes(location.pathname)) return;
+
+  const style = document.createElement("style");
+  style.textContent = [
+    ".home-page .menu-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}",
+    ".home-page .menu-grid>button{min-width:0!important;min-height:104px!important;height:auto!important;padding:14px 8px!important}",
+    ".home-page .menu-grid>button .menu-icon{font-size:28px!important}",
+    ".home-page .menu-grid>button strong{font-size:14px!important;line-height:1.25!important;overflow-wrap:break-word}"
+  ].join("");
+  document.head.appendChild(style);
+
+  function updateMenu() {
+    const grid = document.querySelector(".home-page .menu-grid");
+    if (!grid) return;
+
+    const template = grid.querySelector("button");
+    if (!template) return;
+
+    [
+      ["cine-emergency-token", "🔑", "Gerar Token de Emergência"],
+      ["cine-video-doorman", "📹", "Vídeo Porteiro"]
+    ].forEach(([id, icon, title]) => {
+      if (grid.querySelector("#" + id)) return;
+      const button = template.cloneNode(false);
+      button.id = id;
+      button.type = "button";
+      button.removeAttribute("onclick");
+      button.setAttribute("aria-label", title);
+
+      const symbol = document.createElement("span");
+      symbol.className = "menu-icon";
+      symbol.textContent = icon;
+
+      const label = document.createElement("strong");
+      label.textContent = title;
+
+      button.append(symbol, label);
+      button.addEventListener("click", () => {
+        window.alert(title + ": em breve.");
+      });
+      grid.appendChild(button);
+    });
+  }
+
+  updateMenu();
+  new MutationObserver(updateMenu).observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+})();`;
+
 class PushScriptInjector {
-  element(element) { element.append('<script src="/push-client.js?v=20260816-6" defer></script>', { html: true }); }
+  element(element) { element.append('<script src="/resident-menu.js" defer></script>', { html: true }); element.append('<script src="/push-client.js?v=20260816-6" defer></script>', { html: true }); }
 }
 
 class InstallCaptureInjector {
@@ -516,6 +570,7 @@ export default {
     }
     if (url.pathname === "/resident-manifest.webmanifest") return new Response(JSON.stringify(RESIDENT_MANIFEST), { headers: { "content-type":"application/manifest+json; charset=utf-8", "cache-control":"public, max-age=3600" } });
     if (url.pathname === "/admin-manifest.webmanifest") return new Response(JSON.stringify(ADMIN_MANIFEST), { headers: { "content-type":"application/manifest+json; charset=utf-8", "cache-control":"public, max-age=3600" } });
+    if (url.pathname === "/resident-menu.js") return new Response(RESIDENT_MENU_CLIENT, { headers: { "content-type":"text/javascript; charset=utf-8", "cache-control":"no-store" } });
     if (url.pathname === "/push-client.js") return new Response(PUSH_CLIENT, { headers: { "content-type":"text/javascript; charset=utf-8", "cache-control":"no-cache" } });
     if (url.pathname === "/sw.js") {
       const original = await proxy(request);
