@@ -651,6 +651,71 @@ const RESIDENT_MENU_CLIENT = String.raw`
     selectGate(demos[selectedGate] ? selectedGate : "Portão Bento 1");
   }
 
+
+  function modernizeResidentIcons(grid) {
+    const icons = [
+      {
+        match: /reserva|salão/i,
+        svg: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18M8 15h2M14 15h2M8 18h2"/>'
+      },
+      {
+        match: /mudança|transporte/i,
+        svg: '<path d="M3 4h3l3 13h10M6.7 7H21l-2 7H8.3"/><circle cx="10" cy="20" r="1"/><circle cx="18" cy="20" r="1"/>'
+      },
+      {
+        match: /barulho|comunicação/i,
+        svg: '<path d="M4 10v4h4l10 5V5L8 10H4ZM8 14l2 6h3l-2-4.5M21 9v6"/>'
+      },
+      {
+        match: /encomenda|correspondência/i,
+        svg: '<path d="m12 3 9 5v8l-9 5-9-5V8l9-5ZM3 8l9 5 9-5M12 13v8M7.5 5.5l9 5V14"/>'
+      },
+      {
+        match: /token|emergência/i,
+        svg: '<circle cx="8" cy="8" r="5"/><path d="m11.5 11.5 9 9M16 16l3-3M18.5 18.5l3-3M6.5 6.5h.01"/>'
+      },
+      {
+        match: /vídeo|porteiro/i,
+        svg: '<rect x="3" y="5" width="18" height="13" rx="3"/><circle cx="12" cy="11.5" r="3"/><path d="M9 21h6M12 18v3"/>'
+      }
+    ];
+
+    if (!document.getElementById("cine-modern-icons-style")) {
+      const style = document.createElement("style");
+      style.id = "cine-modern-icons-style";
+      style.textContent = [
+        ".home-page .menu-grid>button .menu-icon{display:inline-flex!important;align-items:center;justify-content:center;width:46px!important;height:46px!important;flex:0 0 46px;border-radius:14px;background:#edf2fa;color:#001b50;font-size:0!important;line-height:1}",
+        ".home-page .menu-grid>button .menu-icon svg{display:block;width:27px;height:27px;flex-shrink:0}",
+        ".home-page .menu-grid>button:active .menu-icon{background:#dce6f5}"
+      ].join("");
+      document.head.appendChild(style);
+    }
+
+    grid.querySelectorAll(":scope > button").forEach(button => {
+      const label = button.querySelector("strong");
+      const icon = icons.find(item =>
+        item.match.test(label ? label.textContent : button.textContent)
+      );
+      if (!icon) return;
+
+      let holder = button.querySelector(".menu-icon");
+      if (!holder) {
+        holder = document.createElement("span");
+        holder.className = "menu-icon";
+        button.prepend(holder);
+      }
+
+      if (holder.dataset.modernIcon === "1") return;
+      holder.dataset.modernIcon = "1";
+      holder.setAttribute("aria-hidden", "true");
+      holder.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" ' +
+        'aria-hidden="true" focusable="false">' +
+        icon.svg + '</svg>';
+    });
+  }
+
   function updateMenu() {
     const grid = document.querySelector(".home-page .menu-grid");
     if (!grid) {
@@ -658,6 +723,7 @@ const RESIDENT_MENU_CLIENT = String.raw`
       return;
     }
 
+    modernizeResidentIcons(grid);
     const template = grid.querySelector("button");
     if (!template) return;
 
