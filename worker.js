@@ -672,7 +672,7 @@ const RESIDENT_MENU_CLIENT = String.raw`
       },
       {
         match: /token|emergência/i,
-        svg: '<circle cx="8" cy="8" r="5" fill="#b88a36"/><path d="m11.5 11.5 9 9M16 16l3-3M18.5 18.5l3-3"/><circle cx="6.5" cy="6.5" r="1" fill="#001b50" stroke="none"/>'
+        svg: '<rect x="2" y="7" width="9" height="10" rx="3" fill="#b88a36"/><circle cx="6.5" cy="12" r="1.5" fill="#fff5de"/><path d="M11 12h11M17 12v4M21 12v3" stroke="#001b50" stroke-width="2.5"/>'
       },
       {
         match: /vídeo|porteiro/i,
