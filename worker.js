@@ -718,6 +718,14 @@ const RESIDENT_MENU_CLIENT = String.raw`
   }
 
   function updateMenu() {
+    // cine-title-with-access
+    document.querySelectorAll("h1, h2, h3").forEach(titulo => {
+      const texto = titulo.textContent.replace(/\s+/g, " ").trim();
+      if (/^Controle de Reservas,?\s*Encomendas e Comunicações$/i.test(texto)) {
+        titulo.textContent = "Controle de Reservas, Acessos, Encomendas e Comunicações";
+      }
+    });
+
     const grid = document.querySelector(".home-page .menu-grid");
     if (!grid) {
       if (dialog) closePage();
