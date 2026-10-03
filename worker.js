@@ -566,36 +566,81 @@ const RESIDENT_MENU_CLIENT = String.raw`
     ticker = setInterval(refresh, 1000);
   }
 
+
   function renderVideo() {
+    const demos = {
+      "Portão Bento 1": {
+        id: "VmySlU1qj4M",
+        name: "Arroio do Silva/SC",
+        source: "https://liveworldwebcams.com/arroio-do-silva-webcam/"
+      },
+      "Portão Bento 2": {
+        id: "j4Wne61IJ3I",
+        name: "Balneário Camboriú/SC",
+        source: "https://liveworldwebcams.com/balneario-camboriu-brazil-live-view/"
+      },
+      "Portão Blumenau": {
+        id: "qoAd9U-8Cic",
+        name: "Gramado/RS",
+        source: "https://liveworldwebcams.com/gramado-live-webcam-brazil/"
+      }
+    };
+
     dialog.querySelector(".cine-content").innerHTML =
       '<p class="cine-description">Veja quem está tocando o interfone no portão.</p>' +
       '<div class="cine-gates" role="group" aria-label="Selecione o portão"></div>' +
-      '<video controls playsinline preload="none"></video>' +
-      '<p class="cine-camera-status" role="status"></p>';
+      '<div class="cine-live-player" style="width:100%;aspect-ratio:16/9;background:#071329;border-radius:16px;overflow:hidden"></div>' +
+      '<p class="cine-camera-status" role="status"></p>' +
+      '<p class="cine-note" style="text-align:center">Câmeras públicas de demonstração. Estas imagens não são dos portões do condomínio.</p>' +
+      '<p style="text-align:center;font-size:12px;margin-top:12px">' +
+      '<a class="cine-source" target="_blank" rel="noopener noreferrer" style="color:#001b50">Fonte: Live World Webcams</a>' +
+      ' · <a class="cine-direct" target="_blank" rel="noopener noreferrer" style="color:#001b50">Abrir transmissão</a></p>';
 
     const gates = dialog.querySelector(".cine-gates");
-    const video = dialog.querySelector("video");
+    const container = dialog.querySelector(".cine-live-player");
     const status = dialog.querySelector(".cine-camera-status");
+    const source = dialog.querySelector(".cine-source");
+    const direct = dialog.querySelector(".cine-direct");
 
     function selectGate(name) {
       selectedGate = name;
-      gates.querySelectorAll("button").forEach(button => {
-        button.setAttribute("aria-pressed", String(button.textContent === name));
-      });
-      video.pause();
-      video.removeAttribute("src");
-      video.setAttribute("aria-label", "Câmera do " + name);
+      const camera = demos[name];
 
-      if (cameras[name]) {
-        video.src = cameras[name];
-        status.textContent = name;
-      } else {
-        status.textContent = name + " — câmera ainda não configurada.";
-      }
-      video.load();
+      gates.querySelectorAll("button").forEach(button => {
+        button.setAttribute(
+          "aria-pressed",
+          String(button.textContent === name)
+        );
+      });
+
+      // Remover o player anterior encerra sua transmissão.
+      container.replaceChildren();
+
+      const frame = document.createElement("iframe");
+      const url = new URL(
+        "https://www.youtube.com/embed/" + camera.id
+      );
+      url.searchParams.set("autoplay", "1");
+      url.searchParams.set("mute", "1");
+      url.searchParams.set("playsinline", "1");
+      url.searchParams.set("rel", "0");
+      url.searchParams.set("origin", location.origin);
+
+      frame.src = url.href;
+      frame.title = "Câmera de demonstração: " + camera.name;
+      frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.style.cssText =
+        "display:block;width:100%;height:100%;border:0";
+
+      container.appendChild(frame);
+      status.textContent = "Demonstração — " + camera.name;
+      source.href = camera.source;
+      direct.href = "https://www.youtube.com/watch?v=" + camera.id;
     }
 
-    Object.keys(cameras).forEach(name => {
+    Object.keys(demos).forEach(name => {
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = name;
@@ -603,11 +648,7 @@ const RESIDENT_MENU_CLIENT = String.raw`
       gates.appendChild(button);
     });
 
-    video.addEventListener("error", () => {
-      status.textContent = "Não foi possível carregar a câmera do " + selectedGate + ".";
-    });
-
-    selectGate(selectedGate);
+    selectGate(demos[selectedGate] ? selectedGate : "Portão Bento 1");
   }
 
   function updateMenu() {
