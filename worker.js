@@ -435,36 +435,203 @@ const PUSH_CLIENT = String.raw`
 })();`;
 
 
+
 const RESIDENT_MENU_CLIENT = String.raw`
 (() => {
   if (!["/", "/morador", "/morador/"].includes(location.pathname)) return;
+
+  // Insira futuramente URLs compatíveis com o player.
+  const cameras = {
+    "Portão Bento 1": "",
+    "Portão Bento 2": "",
+    "Portão Blumenau": ""
+  };
+
+  let dialog = null;
+  let ticker = null;
+  let token = "";
+  let expiresAt = 0;
+  let selectedGate = "Portão Bento 1";
+  let returnFocus = null;
 
   const style = document.createElement("style");
   style.textContent = [
     ".home-page .menu-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}",
     ".home-page .menu-grid>button{min-width:0!important;min-height:104px!important;height:auto!important;padding:14px 8px!important}",
     ".home-page .menu-grid>button .menu-icon{font-size:28px!important}",
-    ".home-page .menu-grid>button strong{font-size:14px!important;line-height:1.25!important;overflow-wrap:break-word}"
+    ".home-page .menu-grid>button strong{font-size:14px!important;line-height:1.25!important;overflow-wrap:break-word}",
+    "#cine-feature-page{box-sizing:border-box;width:100%;max-width:620px;height:100%;height:100dvh;max-height:100dvh;margin:0 auto;padding:24px 20px;border:0;background:#f5f7fb;color:#172b4d;font-family:inherit;overflow:auto}",
+    "#cine-feature-page::backdrop{background:#f5f7fb}",
+    "#cine-feature-page *{box-sizing:border-box}",
+    "#cine-feature-page .cine-head{display:flex;align-items:center;gap:12px;margin-bottom:24px}",
+    "#cine-feature-page h1{margin:0;color:#001b50;font-size:22px;line-height:1.2}",
+    "#cine-feature-page .cine-back{flex:0 0 44px;width:44px;height:44px;border:1px solid #dbe2ec;border-radius:12px;background:white;color:#001b50;font-size:24px;cursor:pointer}",
+    "#cine-feature-page .cine-description{font-size:15px;line-height:1.5;margin:0 0 20px}",
+    "#cine-feature-page .cine-card{padding:24px 18px;background:white;border:1px solid #e0e6ef;border-radius:18px;text-align:center}",
+    "#cine-feature-page .cine-token{font-size:clamp(32px,9vw,46px);font-weight:800;letter-spacing:6px;color:#001b50;font-variant-numeric:tabular-nums;margin:20px 0}",
+    "#cine-feature-page .cine-validity{min-height:24px;margin:0 0 20px;color:#53647d;font-size:14px;font-variant-numeric:tabular-nums}",
+    "#cine-feature-page .cine-primary{width:100%;min-height:48px;border:0;border-radius:12px;padding:14px;background:#001b50;color:white;font:700 16px system-ui;cursor:pointer}",
+    "#cine-feature-page .cine-note{font-size:12px;line-height:1.5;color:#667085;margin:16px 0 0}",
+    "#cine-feature-page .cine-gates{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}",
+    "#cine-feature-page .cine-gates button{min-width:0;min-height:52px;padding:10px 5px;border:1px solid #d5deeb;border-radius:12px;background:white;color:#001b50;font:600 13px system-ui;cursor:pointer}",
+    "#cine-feature-page .cine-gates button[aria-pressed=true]{background:#001b50;color:white;border-color:#001b50}",
+    "#cine-feature-page video{display:block;width:100%;aspect-ratio:16/9;background:#071329;border-radius:16px;object-fit:contain}",
+    "#cine-feature-page .cine-camera-status{margin:12px 0;font-size:13px;line-height:1.5;text-align:center;color:#53647d}",
+    "#cine-feature-page button:focus-visible{outline:3px solid #b88a36;outline-offset:3px}"
   ].join("");
   document.head.appendChild(style);
 
+  function closePage() {
+    if (dialog) dialog.close();
+  }
+
+  function openPage(kind, trigger) {
+    if (dialog) return;
+    returnFocus = trigger;
+    dialog = document.createElement("dialog");
+    dialog.id = "cine-feature-page";
+    dialog.setAttribute("aria-labelledby", "cine-feature-title");
+
+    const title = kind === "token"
+      ? "Token de Emergência"
+      : "Vídeo Porteiro";
+
+    dialog.innerHTML =
+      '<header class="cine-head">' +
+      '<button type="button" class="cine-back" aria-label="Voltar">←</button>' +
+      '<h1 id="cine-feature-title">' + title + '</h1></header>' +
+      '<div class="cine-content"></div>';
+
+    dialog.querySelector(".cine-back").onclick = closePage;
+    dialog.addEventListener("close", () => {
+      clearInterval(ticker);
+      ticker = null;
+      const video = dialog.querySelector("video");
+      if (video) {
+        video.pause();
+        video.removeAttribute("src");
+        video.load();
+      }
+      dialog.remove();
+      dialog = null;
+      if (returnFocus && returnFocus.isConnected) returnFocus.focus();
+    }, { once: true });
+
+    document.body.appendChild(dialog);
+
+    if (kind === "token") renderToken();
+    else renderVideo();
+
+    dialog.showModal();
+  }
+
+  function renderToken() {
+    dialog.querySelector(".cine-content").innerHTML =
+      '<p class="cine-description">Esqueceu sua TAG? Gere um código para acessar pela fechadura eletrônica. O código tem validade de <strong>5 minutos</strong>.</p>' +
+      '<section class="cine-card">' +
+      '<div class="cine-token" aria-label="Código gerado" aria-live="polite">------</div>' +
+      '<p class="cine-validity"></p>' +
+      '<button type="button" class="cine-primary">Gerar Token</button>' +
+      '</section>' +
+      '<p class="cine-note">Demonstração: os códigos ainda não estão integrados à fechadura.</p>';
+
+    const output = dialog.querySelector(".cine-token");
+    const validity = dialog.querySelector(".cine-validity");
+    const generate = dialog.querySelector(".cine-primary");
+
+    function refresh() {
+      const seconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      if (token && seconds > 0) {
+        if (output.textContent !== token) output.textContent = token;
+        validity.textContent = "Válido por " +
+          Math.floor(seconds / 60) + ":" +
+          String(seconds % 60).padStart(2, "0");
+      } else {
+        if (output.textContent !== "------") output.textContent = "------";
+        validity.textContent = expiresAt
+          ? "Código expirado. Gere um novo token."
+          : "Toque abaixo para gerar seu código.";
+        token = "";
+      }
+    }
+
+    generate.onclick = () => {
+      const random = crypto.getRandomValues(new Uint32Array(1))[0];
+      token = String(100000 + random % 900000);
+      expiresAt = Date.now() + 5 * 60 * 1000;
+      refresh();
+    };
+
+    refresh();
+    ticker = setInterval(refresh, 1000);
+  }
+
+  function renderVideo() {
+    dialog.querySelector(".cine-content").innerHTML =
+      '<p class="cine-description">Veja quem está tocando o interfone no portão.</p>' +
+      '<div class="cine-gates" role="group" aria-label="Selecione o portão"></div>' +
+      '<video controls playsinline preload="none"></video>' +
+      '<p class="cine-camera-status" role="status"></p>';
+
+    const gates = dialog.querySelector(".cine-gates");
+    const video = dialog.querySelector("video");
+    const status = dialog.querySelector(".cine-camera-status");
+
+    function selectGate(name) {
+      selectedGate = name;
+      gates.querySelectorAll("button").forEach(button => {
+        button.setAttribute("aria-pressed", String(button.textContent === name));
+      });
+      video.pause();
+      video.removeAttribute("src");
+      video.setAttribute("aria-label", "Câmera do " + name);
+
+      if (cameras[name]) {
+        video.src = cameras[name];
+        status.textContent = name;
+      } else {
+        status.textContent = name + " — câmera ainda não configurada.";
+      }
+      video.load();
+    }
+
+    Object.keys(cameras).forEach(name => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = name;
+      button.onclick = () => selectGate(name);
+      gates.appendChild(button);
+    });
+
+    video.addEventListener("error", () => {
+      status.textContent = "Não foi possível carregar a câmera do " + selectedGate + ".";
+    });
+
+    selectGate(selectedGate);
+  }
+
   function updateMenu() {
     const grid = document.querySelector(".home-page .menu-grid");
-    if (!grid) return;
+    if (!grid) {
+      if (dialog) closePage();
+      return;
+    }
 
     const template = grid.querySelector("button");
     if (!template) return;
 
     [
-      ["cine-emergency-token", "🔑", "Gerar Token de Emergência"],
-      ["cine-video-doorman", "📹", "Vídeo Porteiro"]
-    ].forEach(([id, icon, title]) => {
+      ["cine-emergency-token", "🔑", "Gerar Token de Emergência", "token"],
+      ["cine-video-doorman", "📹", "Vídeo Porteiro", "video"]
+    ].forEach(([id, icon, title, kind]) => {
       if (grid.querySelector("#" + id)) return;
+
       const button = template.cloneNode(false);
       button.id = id;
       button.type = "button";
       button.removeAttribute("onclick");
       button.setAttribute("aria-label", title);
+      button.setAttribute("aria-haspopup", "dialog");
 
       const symbol = document.createElement("span");
       symbol.className = "menu-icon";
@@ -474,9 +641,7 @@ const RESIDENT_MENU_CLIENT = String.raw`
       label.textContent = title;
 
       button.append(symbol, label);
-      button.addEventListener("click", () => {
-        window.alert(title + ": em breve.");
-      });
+      button.onclick = () => openPage(kind, button);
       grid.appendChild(button);
     });
   }
